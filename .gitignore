@@ -1,0 +1,68 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pyo
+*.pyd
+*.pyc
+*.pyo
+
+# Virtual Environment
+.venv/
+env/
+venv/
+ENV/
+
+# Django
+db.sqlite3
+*.sqlite3
+*.log
+logs/
+media/
+media/documents/
+
+# Django Migrations
+*/migrations/*.pyc
+*/migrations/*.pyo
+*/migrations/__pycache__/
+*/migrations/*.log
+*/migrations/*.sqlite3
+
+# Environment Variables
+.env
+.env.*
+
+# Coverage & Testing
+htmlcov/
+.coverage
+coverage.xml
+.tox/
+.nox/
+.cache/
+.pytest_cache/
+test-results.xml
+
+# VSCode
+.vscode/
+
+# PyCharm
+.idea/
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Swagger/OpenAPI generated schema (if generated locally)
+schema.yml
+schema.json
+
+# Backup files
+*.bak
+*.swp
+*.tmp
+*~
+
+# Git itself
+.git/
