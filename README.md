@@ -91,10 +91,11 @@ pdf-qa-app
 ## ⚙️ Setup Instructions
 
 1. **Clone the Repository**
+
    ```bash
    git clone https://github.com/Vaibhav-crux/pdf-qa-app.git
    cd pdf-qa-app
-````
+   ```
 
 2. **Create and Activate Virtual Environment**
 
