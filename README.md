@@ -1,8 +1,3 @@
-Here’s a cleanly formatted version of your project documentation rewritten as a `README.md` in Markdown:
-
----
-
-```markdown
 # 📚 Knowledge Assistant
 
 A Django-based application for uploading PDF documents, processing them into a searchable knowledge base, and answering questions using a language model (Google Gemini API) and ChromaDB.
