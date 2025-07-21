@@ -10,11 +10,19 @@ class Document(models.Model):
         return self.file_name
 
 class InteractionLog(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
     question = models.TextField()
     answer = models.TextField()
     sources = models.JSONField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+class TTSState(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    text = models.TextField()
+    position = models.IntegerField(default=0)
+    voice_id = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.user.username if self.user else 'Anonymous'} - {self.question[:50]}"
+        return f"TTS for {self.user.username} at position {self.position}"

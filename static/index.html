@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knowledge Assistant</title>
+    <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.development.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.development.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.22.5/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        const { createRoot } = ReactDOM;
+
+        const App = () => {
+            const [token, setToken] = useState('');
+            const [file, setFile] = useState(null);
+            const [fileName, setFileName] = useState('');
+            const [question, setQuestion] = useState('');
+            const [answer, setAnswer] = useState(null);
+            const [interactionId, setInteractionId] = useState(null);
+            const [voices, setVoices] = useState([]);
+            const [selectedVoice, setSelectedVoice] = useState('');
+            const [ttsAction, setTtsAction] = useState('play');
+            const [ttsPosition, setTtsPosition] = useState(0);
+            const [audioUrl, setAudioUrl] = useState(null);
+            const [error, setError] = useState(null);
+            const [isPlaying, setIsPlaying] = useState(false);
+            const [loading, setLoading] = useState(false);
+            const [hasUploaded, setHasUploaded] = useState(false);
+            const [isQuestionPending, setIsQuestionPending] = useState(false);
+
+            const apiUrl = '/api/';
+            const audioRef = useRef(null);
+
+            // Mock voices since pyttsx3 is server-side
+            useEffect(() => {
+                setVoices([{ id: '', name: 'Default Voice' }]);
+            }, []);
+
+            const handleApiError = (response) => {
+                if (!response.ok) {
+                    throw new Error(response.status === 401 ? 'Invalid or missing token' : 'API request failed');
+                }
+                return response;
+            };
+
+            const uploadDocument = async (e) => {
+                e.preventDefault();
+                if (!token || !file || !fileName) {
+                    setError('Please provide token, file, and file name');
+                    return;
+                }
+                setLoading(true);
+                const formData = new FormData();
+                formData.append('file_name', fileName);
+                formData.append('file', file);
+
+                try {
+                    const response = await fetch(`${apiUrl}upload-document/`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Token ${token}` },
+                        body: formData,
+                    }).then(handleApiError);
+                    const data = await response.json();
+                    setError(null);
+                    setHasUploaded(true); // Enable TTS buttons
+                    alert(data.message);
+                    setFileName('');
+                    setFile(null);
+                    e.target.reset();
+                } catch (err) {
+                    setError(err.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const askQuestion = async (e) => {
+                e.preventDefault();
+                if (!token || !question) {
+                    setError('Please provide token and question');
+                    return;
+                }
+                setLoading(true);
+                setIsQuestionPending(true);
+                try {
+                    const response = await fetch(`${apiUrl}ask-question/`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Token ${token}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ question }),
+                    }).then(handleApiError);
+                    const data = await response.json();
+                    setAnswer(data);
+                    setInteractionId(data.interaction_id);
+                    setError(null);
+                    setQuestion('');
+                } catch (err) {
+                    setError(err.message);
+                } finally {
+                    setLoading(false);
+                    setIsQuestionPending(false);
+                }
+            };
+
+            const handleTTS = async (action) => {
+                if (!token || !interactionId) {
+                    setError('Please provide token and ask a question first');
+                    return;
+                }
+                setLoading(true);
+                try {
+                    const response = await fetch(`${apiUrl}text-to-speech/`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Token ${token}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            answer_id: interactionId,
+                            voice_id: selectedVoice,
+                            action,
+                            position: ttsPosition,
+                        }),
+                    }).then(handleApiError);
+
+                    if (action === 'pause') {
+                        const data = await response.json();
+                        setTtsPosition(data.position);
+                        setIsPlaying(false);
+                        if (audioRef.current) audioRef.current.pause();
+                        setError(null);
+                        alert(data.message);
+                    } else {
+                        const blob = await response.blob();
+                        const url = URL.createObjectURL(blob);
+                        setAudioUrl(url);
+                        setIsPlaying(true);
+                        if (audioRef.current) {
+                            audioRef.current.src = url;
+                            audioRef.current.play();
+                        }
+                        setError(null);
+                    }
+                } catch (err) {
+                    setError(err.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const handleAudioPause = () => {
+                if (audioRef.current) {
+                    setTtsPosition(audioRef.current.currentTime * 1000); // Approximate position
+                    handleTTS('pause');
+                }
+            };
+
+            const clearAnswer = () => {
+                setAnswer(null);
+                setInteractionId(null);
+                setAudioUrl(null);
+                setIsPlaying(false);
+                setTtsPosition(0);
+                if (audioRef.current) audioRef.current.pause();
+            };
+
+            return (
+                <div className="container mx-auto p-4 relative">
+                    {/* Loading Overlay */}
+                    {loading && (
+                        <div className="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center z-50">
+                            <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500"></div>
+                        </div>
+                    )}
+
+                    <h1 className="text-3xl font-bold mb-4">Knowledge Assistant</h1>
+                    
+                    {/* Token Input */}
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium">Token</label>
+                        <input
+                            type="text"
+                            value={token}
+                            onChange={(e) => setToken(e.target.value)}
+                            placeholder="Enter your API token"
+                            className="mt-1 p-2 border rounded w-full"
+                        />
+                    </div>
+
+                    {/* Upload Document */}
+                    <form onSubmit={uploadDocument} className="mb-4">
+                        <h2 className="text-xl font-semibold mb-2">Upload PDF</h2>
+                        <input
+                            type="text"
+                            value={fileName}
+                            onChange={(e) => setFileName(e.target.value)}
+                            placeholder="File name"
+                            className="mt-1 p-2 border rounded w-full mb-2"
+                        />
+                        <input
+                            type="file"
+                            accept=".pdf"
+                            onChange={(e) => setFile(e.target.files[0])}
+                            className="mt-1 p-2 border rounded w-full mb-2"
+                        />
+                        <button type="submit" className="bg-blue-500 text-white p-2 rounded">
+                            Upload
+                        </button>
+                    </form>
+
+                    {/* Ask Question */}
+                    <form onSubmit={askQuestion} className="mb-4">
+                        <h2 className="text-xl font-semibold mb-2">Ask a Question</h2>
+                        <input
+                            type="text"
+                            value={question}
+                            onChange={(e) => setQuestion(e.target.value)}
+                            placeholder="Enter your question"
+                            className="mt-1 p-2 border rounded w-full mb-2"
+                        />
+                        <button type="submit" className="bg-blue-500 text-white p-2 rounded">
+                            Submit
+                        </button>
+                    </form>
+
+                    {/* Answer Section */}
+                    <div className="mb-4">
+                        <h2 className="text-xl font-semibold mb-2">Answer</h2>
+                        {isQuestionPending ? (
+                            <p className="text-gray-500">Wait for best result...</p>
+                        ) : answer ? (
+                            <div>
+                                <p>{answer.answer}</p>
+                                <p className="text-sm text-gray-600">
+                                    Sources: {answer.sources.join(', ')}
+                                </p>
+                                <button
+                                    onClick={clearAnswer}
+                                    className="mt-2 bg-red-500 text-white p-1 rounded text-sm"
+                                >
+                                    Clear
+                                </button>
+                            </div>
+                        ) : (
+                            <p className="text-gray-500">No question asked yet.</p>
+                        )}
+                    </div>
+
+                    {/* TTS Controls */}
+                    <div className="mb-4">
+                        <h2 className="text-xl font-semibold mb-2">Text-to-Speech</h2>
+                        <select
+                            value={selectedVoice}
+                            onChange={(e) => setSelectedVoice(e.target.value)}
+                            className="mt-1 p-2 border rounded w-full mb-2"
+                            disabled={!hasUploaded || !interactionId}
+                        >
+                            {voices.map((voice) => (
+                                <option key={voice.id} value={voice.id}>
+                                    {voice.name}
+                                </option>
+                            ))}
+                        </select>
+                        <div className="flex space-x-2">
+                            <button
+                                onClick={() => handleTTS('play')}
+                                className={`p-2 rounded text-white ${hasUploaded && interactionId && !isPlaying ? 'bg-green-500' : 'bg-gray-400 cursor-not-allowed'}`}
+                                disabled={!hasUploaded || !interactionId || isPlaying}
+                            >
+                                Play
+                            </button>
+                            <button
+                                onClick={handleAudioPause}
+                                className={`p-2 rounded text-white ${hasUploaded && interactionId && isPlaying ? 'bg-yellow-500' : 'bg-gray-400 cursor-not-allowed'}`}
+                                disabled={!hasUploaded || !interactionId || !isPlaying}
+                            >
+                                Pause
+                            </button>
+                            <button
+                                onClick={() => handleTTS('resume')}
+                                className={`p-2 rounded text-white ${hasUploaded && interactionId && !isPlaying && ttsPosition > 0 ? 'bg-blue-500' : 'bg-gray-400 cursor-not-allowed'}`}
+                                disabled={!hasUploaded || !interactionId || isPlaying || ttsPosition === 0}
+                            >
+                                Resume
+                            </button>
+                        </div>
+                        <audio ref={audioRef} onEnded={() => setIsPlaying(false)} />
+                    </div>
+
+                    {/* Error Display */}
+                    {error && (
+                        <div className="text-red-500 mt-4">
+                            Error: {error}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Document
+from .models import Document, TTSState
 from drf_spectacular.utils import extend_schema_field
 
 class DocumentSerializer(serializers.ModelSerializer):
@@ -24,3 +24,9 @@ class DocumentSerializer(serializers.ModelSerializer):
 
 class AskQuestionSerializer(serializers.Serializer):
     question = serializers.CharField(max_length=1000, help_text="Question to query the knowledge base")
+
+class TTSSerializer(serializers.Serializer):
+    answer_id = serializers.IntegerField(help_text="ID of the InteractionLog entry to convert to speech")
+    voice_id = serializers.CharField(max_length=255, required=False, allow_blank=True, help_text="Voice ID for TTS (optional)")
+    action = serializers.ChoiceField(choices=['play', 'pause', 'resume'], help_text="TTS action: play, pause, or resume")
+    position = serializers.IntegerField(required=False, default=0, help_text="Starting position for resume (optional)")

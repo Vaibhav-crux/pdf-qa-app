@@ -8,8 +8,12 @@ from django.utils.decorators import method_decorator
 from drf_spectacular.utils import extend_schema, OpenApiResponse
 from .utils import query_knowledge_base, process_document
 from .llm import get_llm_response
-from .models import Document, InteractionLog
-from .serializers import DocumentSerializer, AskQuestionSerializer
+from .models import Document, InteractionLog, TTSState
+from .serializers import DocumentSerializer, AskQuestionSerializer, TTSSerializer
+import pyttsx3
+from django.http import StreamingHttpResponse
+import io
+import time
 
 class UploadThrottle(AnonRateThrottle):
     rate = '5/minute'
@@ -78,7 +82,7 @@ class AskQuestionView(APIView):
         
         # Log interaction
         try:
-            InteractionLog.objects.create(
+            interaction = InteractionLog.objects.create(
                 user=request.user,
                 question=question,
                 answer=answer,
@@ -89,7 +93,8 @@ class AskQuestionView(APIView):
         
         return Response({
             "answer": answer,
-            "sources": sources
+            "sources": sources,
+            "interaction_id": interaction.id
         }, status=status.HTTP_200_OK)
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -143,3 +148,98 @@ class DocumentUploadView(APIView):
                 document.delete()
                 return Response({"error": f"Processing failed: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class TTSThrottle(AnonRateThrottle):
+    rate = '10/minute'
+
+@method_decorator(csrf_exempt, name='dispatch')
+@extend_schema(
+    request=TTSSerializer,
+    responses={
+        200: OpenApiResponse(
+            response={
+                'type': 'string', 'format': 'binary'
+            },
+            description='Audio file (MP3) streamed for playback'
+        ),
+        400: OpenApiResponse(
+            response={'type': 'object', 'properties': {'error': {'type': 'string'}}},
+            description='Bad request due to invalid input'
+        ),
+        401: OpenApiResponse(
+            response={'type': 'object', 'properties': {'detail': {'type': 'string'}}},
+            description='Unauthorized due to missing or invalid token'
+        ),
+        429: OpenApiResponse(
+            response={'type': 'object', 'properties': {'detail': {'type': 'string'}}},
+            description='Too many requests (rate limit exceeded)'
+        ),
+        500: OpenApiResponse(
+            response={'type': 'object', 'properties': {'error': {'type': 'string'}}},
+            description='Server error during TTS processing'
+        )
+    },
+    description='Convert an answer to speech, with options to play, pause, or resume (rate-limited to 10 requests/minute, requires token authentication)'
+)
+class TextToSpeechView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [TTSThrottle]
+
+    def post(self, request):
+        serializer = TTSSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        answer_id = serializer.validated_data['answer_id']
+        voice_id = serializer.validated_data.get('voice_id', '')
+        action = serializer.validated_data['action']
+        position = serializer.validated_data.get('position', 0)
+
+        try:
+            interaction = InteractionLog.objects.get(id=answer_id, user=request.user)
+        except InteractionLog.DoesNotExist:
+            return Response({"error": "Interaction not found or not authorized"}, status=status.HTTP_400_BAD_REQUEST)
+
+        text = interaction.answer
+
+        # Initialize pyttsx3
+        engine = pyttsx3.init()
+        voices = engine.getProperty('voices')
+        available_voices = [v.id for v in voices]
+
+        # Set voice if provided and valid
+        if voice_id and voice_id in available_voices:
+            engine.setProperty('voice', voice_id)
+        elif voice_id:
+            return Response({"error": f"Voice ID {voice_id} not found. Available voices: {available_voices}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Handle TTS state
+        tts_state, _ = TTSState.objects.get_or_create(user=request.user, text=text, defaults={'voice_id': voice_id})
+
+        if action == 'pause':
+            tts_state.position = position
+            tts_state.save()
+            return Response({"message": "Playback paused", "position": position}, status=status.HTTP_200_OK)
+        
+        if action == 'resume':
+            start_pos = tts_state.position if tts_state.position > 0 else position
+        else:  # play
+            start_pos = 0
+            tts_state.position = 0
+            tts_state.voice_id = voice_id
+            tts_state.save()
+
+        # Convert text to speech and stream as MP3
+        audio_buffer = io.BytesIO()
+        engine.save_to_file(text[start_pos:], audio_buffer)
+        engine.runAndWait()
+
+        audio_buffer.seek(0)
+        response = StreamingHttpResponse(audio_buffer, content_type='audio/mpeg')
+        response['Content-Disposition'] = 'attachment; filename="speech.mp3"'
+        
+        # Update position on completion (approximate)
+        tts_state.position = len(text)
+        tts_state.save()
+
+        return response

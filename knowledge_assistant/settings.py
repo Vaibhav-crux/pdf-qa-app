@@ -24,10 +24,12 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'drf_spectacular',
+    'corsheaders',
     'api',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -37,12 +39,29 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    'http://127.0.0.1:5500',
+]
+
+CORS_ALLOW_METHODS = [
+    'GET',
+    'POST',
+    'OPTIONS',
+]
+
+CORS_ALLOW_HEADERS = [
+    'Authorization',
+    'Content-Type',
+]
+
 ROOT_URLCONF = 'knowledge_assistant.urls'
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -84,7 +103,8 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -104,6 +124,7 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'anon': '10/minute',
         'upload': '5/minute',
+        'tts': '10/minute',
     },
 }
 
@@ -113,18 +134,6 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'API for uploading PDF documents and querying their content using a language model and ChromaDB.',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': True,
-    'SERVE_AUTHENTICATION': None,
-    'SWAGGER_UI_SETTINGS': {
-        'deepLinking': True,
-        'displayOperationId': True,
-        'defaultModelsExpandDepth': 1,
-        'defaultModelExpandDepth': 1,
-        'displayRequestDuration': True,
-    },
-    'SWAGGER_UI_DIST': '//unpkg.com/swagger-ui-dist@5.17.14',
-    'SWAGGER_UI_FAVICON_HREF': '//unpkg.com/swagger-ui-dist@5.17.14/favicon-32x32.png',
-    'COMPONENT_SPLIT_REQUEST': True,
-    'SECURITY': [{'TokenAuth': []}],
 }
 
 # Logging configuration
