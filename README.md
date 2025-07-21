@@ -1,289 +1,295 @@
-# 📚 Knowledge Assistant
+Sure! Here's your content formatted as a professional and clean `README.md` file for your GitHub repository:
 
-A Django-based application for uploading PDF documents, processing them into a searchable knowledge base, and answering questions using a language model (Google Gemini API) and ChromaDB.
-
----
+# 📚 Knowledge Assistant  
+A Django-based application for uploading PDF documents, processing them into a searchable knowledge base, answering questions using a language model (Google Gemini API) and ChromaDB, and reading document text in various voices with pause/resume functionality across sessions.
 
 ## 🧭 Table of Contents
 
-- [Project Overview](#project-overview)
-- [Features](#features)
-- [Project Structure](#project-structure)
-- [Prerequisites](#prerequisites)
-- [Setup Instructions](#setup-instructions)
-- [API Endpoints](#api-endpoints)
-- [API Documentation (Swagger)](#api-documentation-swagger)
-- [Authentication](#authentication)
-- [Logging](#logging)
-- [Security and Rate Limiting](#security-and-rate-limiting)
-- [Troubleshooting](#troubleshooting)
-
----
+- [📘 Project Overview](#-project-overview)  
+- [✨ Features](#-features)  
+- [📁 Project Structure](#-project-structure)  
+- [🛠️ Prerequisites](#️-prerequisites)  
+- [⚙️ Setup Instructions](#-setup-instructions)  
+- [🔗 API Endpoints](#-api-endpoints)  
+- [📄 API Documentation (Swagger)](#-api-documentation-swagger)  
+- [🔐 Authentication](#-authentication)  
+- [📝 Logging](#-logging)  
+- [🛡️ Security and Rate Limiting](#️-security-and-rate-limiting)  
+- [🧯 Troubleshooting](#️-troubleshooting)  
 
 ## 📘 Project Overview
 
-Knowledge Assistant is a web application built with **Django** and **Django REST Framework** that enables authenticated users to:
+**Knowledge Assistant** is a web application built with **Django** and **Django REST Framework** that enables authenticated users to:
 
 - Upload PDF documents (max 10MB).
 - Convert PDFs into embeddings stored in **ChromaDB**.
-- Ask questions in natural language powered by **Google’s Gemini API**.
+- Ask questions in natural language powered by **Google Gemini API**.
+- Read document text in various voices using TTS with session-persistent pause/resume.
 - Log all interactions for auditing and debugging.
 
-Optimized for performance and built with best practices in mind (auth, rate limiting, Swagger docs, etc.).
-
----
+🔒 Built with performance, security, and usability in mind.
 
 ## ✨ Features
 
-- **PDF Upload** via token-authenticated API
-- **Natural Language Q&A** from PDF content
-- **ChromaDB Integration** for semantic retrieval
-- **Token Authentication** via Django admin
-- **Rate Limiting** (uploads/questions per IP)
-- **Logging** of all requests/responses
-- **Unit Testing** for endpoints
-- **Swagger UI** for API docs
-- **Security-first** configurations
-
----
+- ✅ PDF Upload via token-authenticated API  
+- 💬 Natural Language Q&A from PDF content  
+- 🔊 Text-to-Speech with multiple voice options and session-persistent pause/resume  
+- 🧠 ChromaDB Integration for semantic retrieval  
+- 🔐 Token Authentication via Django admin  
+- 🚫 Rate Limiting (uploads/questions per IP)  
+- 🧾 Logging of all requests/responses  
+- 🧪 Unit Testing for endpoints  
+- 💻 Swagger UI for API docs  
+- 🔒 Security-first configurations  
 
 ## 📁 Project Structure
 
 ```
-
 pdf-qa-app
 ├── .venv/                    # Virtual environment
-├── knowledge\_assistant/      # Django project
-│   ├── settings.py           # Security, logging, Swagger
-│   ├── urls.py               # Routing
-│   ├── wsgi.py
-├── api/                      # API logic
-│   ├── models.py             # Document, InteractionLog models
-│   ├── views.py              # API views
-│   ├── urls.py               # API routes
-│   ├── serializers.py
-│   ├── llm.py                # Google Gemini API integration
-│   ├── utils.py              # PDF + ChromaDB utilities
-│   ├── signals.py
-├── media/documents/          # PDF storage
-├── logs/django.log           # Application logs
-├── tests/                    # Unit tests
 ├── .env                      # Environment config
+├── .gitignore
 ├── db.sqlite3
 ├── manage.py
 ├── requirements.txt
+├── api/                      # API logic
+│   ├── admin.py
+│   ├── apps.py
+│   ├── llm.py                # Google Gemini API integration
+│   ├── models.py             # Document, InteractionLog models
+│   ├── serializers.py
+│   ├── signals.py
+│   ├── tests.py
+│   ├── urls.py               # API routes
+│   ├── utils.py              # PDF + ChromaDB + TTS utilities
+│   ├── views.py              # API views
+│   ├── __init__.py
+│   ├── migrations/
+│   │   ├── 0001_initial.py
+│   │   ├── 0002_interactionlog.py
+│   │   ├── 0003_alter_interactionlog_user.py
+│   │   ├── 0004_rename_created_at_interactionlog_timestamp_and_more.py
+│   │   ├── __init__.py
+├── chroma/                   # ChromaDB storage
+│   ├── chroma.sqlite3
+│   ├── c575fc4a-f2c4-4683-a736-5f7e933db530/
+│   │   ├── data_level0.bin
+│   │   ├── header.bin
+│   │   ├── length.bin
+│   │   ├── link_lists.bin
+├── knowledge_assistant/       # Django project
+│   ├── asgi.py
+│   ├── settings.py           # Security, logging, Swagger
+│   ├── urls.py               # Routing
+│   ├── wsgi.py
+│   ├── __init__.py
+│   ├── chroma/
+│   │   ├── chroma.sqlite3
+│   │   ├── 1f198ee0-3a70-474b-9ca1-2d8748391bdb/
+│   │   │   ├── data_level0.bin
+│   │   │   ├── header.bin
+│   │   │   ├── length.bin
+│   │   │   ├── link_lists.bin
+├── media/                    # PDF storage
+│   ├── documents/
+│   │   ├── Introduction-to-MS-Office.pdf
+├── sample/                   # Sample PDFs
+│   ├── Introduction-to-MS-Office.pdf
+├── static/                   # Static files
+│   ├── index.html
+├── logs/                     # Application logs
+│   ├── django.log
 └── README.md
-
-````
-
----
+```
 
 ## 🛠️ Prerequisites
 
-- Python 3.8+
-- ChromaDB server running on `localhost:8000`
-- Google Gemini API key
-- Virtual environment setup
-- Django admin access
-
----
+- Python 3.8+  
+- ChromaDB server listening at `localhost:8000`  
+- Google Gemini API key  
+- Virtual environment setup  
+- Django superuser access  
+- Web browser with TTS support  
 
 ## ⚙️ Setup Instructions
 
-1. **Clone the Repository**
+### 1. Clone the Repository
 
-   ```bash
-   git clone https://github.com/Vaibhav-crux/pdf-qa-app.git
-   cd pdf-qa-app
-   ```
+```bash
+git clone https://github.com/Vaibhav-crux/pdf-qa-app.git
+cd pdf-qa-app
+```
 
-2. **Create and Activate Virtual Environment**
+### 2. Create and Activate Virtual Environment
 
-   ```bash
-   python -m venv .venv
-   .venv\Scripts\activate     # Windows
-   source .venv/bin/activate  # macOS/Linux
-   ```
+```bash
+python -m venv .venv
+# Windows
+.venv\Scripts\activate
+# Mac/Linux
+source .venv/bin/activate
+```
 
-3. **Install Dependencies**
+### 3. Install Requirements
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+```bash
+pip install -r requirements.txt
+```
 
-4. **Set Up Environment Variables**
-   Create a `.env` file:
+### 4. Configure `.env`
 
-   ```env
-   GOOGLE_API_KEY=your_google_api_key
-   DJANGO_SECRET_KEY=your_django_secret
-   HF_HUB_DISABLE_SYMLINKS_WARNING=true
-   ```
+Create a `.env` file in the root:
 
-5. **Create Required Directories**
+```ini
+GOOGLE_API_KEY=your_google_api_key
+DJANGO_SECRET_KEY=your_django_secret
+HF_HUB_DISABLE_SYMLINKS_WARNING=true
+```
 
-   ```bash
-   mkdir -p media/documents logs
-   ```
+### 5. Create Necessary Directories
 
-6. **Run Migrations**
+```bash
+mkdir -p media/documents logs static
+```
 
-   ```bash
-   python manage.py migrate
-   ```
+### 6. Run Database Migrations
 
-7. **Create Superuser**
+```bash
+python manage.py migrate
+```
 
-   ```bash
-   python manage.py createsuperuser
-   ```
+### 7. Create Superuser
 
-8. **Start ChromaDB Server**
-   In a separate terminal:
+```bash
+python manage.py createsuperuser
+```
 
-   ```bash
-   chroma run --host localhost --port 8000
-   ```
+### 8. Start ChromaDB Server
 
-9. **Start Django Server**
+```bash
+chroma run --host localhost --port 8000
+```
 
-   ```bash
-   python manage.py runserver
-   ```
+### 9. Run Django App
 
-> Visit: [http://localhost:8000/](http://localhost:8000/)
+```bash
+python manage.py runserver
+```
 
----
+Visit: [http://localhost:8000/](http://localhost:8000/)
 
 ## 🔗 API Endpoints
 
-All API endpoints require **Token Authentication** and are **rate-limited**.
+All endpoints require **Token Authentication** and are **rate-limited**.
 
 ### 1. Upload Document
 
-* **POST** `/api/upload-document/`
-* **Auth Required**: Yes
-* **Rate Limit**: 5 requests/min/IP
-* **Request (form-data)**:
+- **POST** `/api/upload-document/`  
+- **Auth:** Required  
+- **Limit:** 5 requests/min/IP  
 
-  * `file_name`: String
-  * `file`: PDF (max 10MB)
-
-**Example**:
+**Sample cURL:**
 
 ```bash
 curl -X POST http://localhost:8000/api/upload-document/ \
--H "Authorization: Token <your-token>" \
--F "file_name=MyDoc.pdf" \
--F "file=@/path/to/MyDoc.pdf"
+  -H "Authorization: Token " \
+  -F "file_name=MyDoc.pdf" \
+  -F "file=@/path/to/MyDoc.pdf"
 ```
 
-**Success**:
+### 2. Ask a Question
 
-```json
-{
-  "message": "Document uploaded and processed successfully",
-  "file_name": "MyDoc.pdf"
-}
-```
+- **POST** `/api/ask-question/`  
+- **Auth:** Required  
+- **Limit:** 10 requests/min/IP  
 
----
-
-### 2. Ask Question
-
-* **POST** `/api/ask-question/`
-* **Auth Required**: Yes
-* **Rate Limit**: 10 requests/min/IP
-* **Request (JSON)**:
-
-  * `question`: String
-
-**Example**:
+**Sample cURL:**
 
 ```bash
 curl -X POST http://localhost:8000/api/ask-question/ \
--H "Authorization: Token <your-token>" \
--H "Content-Type: application/json" \
--d '{"question": "What is the use of mitochondria?"}'
+  -H "Authorization: Token " \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What is the use of mitochondria?"}'
 ```
 
-**Success**:
+### 3. Read Document Text (TTS)
 
-```json
-{
-  "answer": "The mitochondria is known as the powerhouse of the cell...",
-  "sources": ["Science_Class_IX.pdf - Page 3"]
-}
+- **POST** `/api/read-document/`  
+- **Auth:** Required  
+- **Limit:** 10 requests/min/IP  
+
+**Sample cURL:**
+
+```bash
+curl -X POST http://localhost:8000/api/read-document/ \
+  -H "Authorization: Token " \
+  -H "Content-Type: application/json" \
+  -d '{"file_name": "MyDoc.pdf", "voice": "en-US-male", "start_page": 1, "resume": false}'
 ```
 
----
+📌 **Note:**
+- Supported TTS Voices: `en-US-male`, `en-US-female` (depends on browser)
+- TTS progress persists across sessions (resume from last read point)
 
 ## 📄 API Documentation (Swagger)
 
-* URL: [http://localhost:8000/api/docs/](http://localhost:8000/api/docs/)
-* OpenAPI Schema: [http://localhost:8000/api/schema/](http://localhost:8000/api/schema/)
+- **Swagger UI:** [http://localhost:8000/api/docs/](http://localhost:8000/api/docs/)  
+- **OpenAPI Schema:** [http://localhost:8000/api/schema/](http://localhost:8000/api/schema/)
 
-Use Swagger UI to:
-
-* Explore endpoints
-* Test with input
-* Use the `Authorize` button to add your token
-
----
+> Use the **Authorize** button in Swagger UI to add your Token.
 
 ## 🔐 Authentication
 
-1. **Generate Token**
+### Token Creation
 
-   * Visit: `http://localhost:8000/admin/`
-   * Navigate to: `authtoken > tokens`
-   * Copy your token (e.g., `9944b09199c62bcf9418ad846dd0e4bbdfc6ee4b`)
+Go to Django Admin:
+```
+http://localhost:8000/admin/
+```
 
-2. **Usage**
+Navigate to:
+```text
+authtoken > tokens
+```
 
-   * Use in header:
-
-     ```
-     Authorization: Token <your-token>
-     ```
-
----
+Generate and copy your token:  
+`Authorization: Token `
 
 ## 📝 Logging
 
-* Logs saved in `logs/django.log`
-* Includes request info, response times, and errors
+Log File: `logs/django.log`  
+Includes:
+- Uploaded document details  
+- Reading session data  
+- Question and answer logs  
+- Error stack traces  
 
-**Example Log**:
+**Example:**
 
 ```
-INFO 2025-07-11 12:46:37 api Document processing completed in 15.23 seconds
+INFO 2025-07-21 23:29:37 api Document reading started for MyDoc.pdf in en-US-male voice
 ```
-
----
 
 ## 🛡️ Security and Rate Limiting
 
-* **Token Auth**: All sensitive endpoints
-* **Rate Limits**:
-
-  * Uploads: 5/min/IP
-  * Questions: 10/min/IP
-* **.env**: Sensitive configs like `GOOGLE_API_KEY`, `DJANGO_SECRET_KEY`
-* **CSRF**: Disabled for API endpoints
-* **Secure settings**: Production-ready flags are included (e.g., `SECURE_SSL_REDIRECT`)
-
----
+- **Authentication:** Token required for major endpoints  
+- **Rate Limits:**
+  - Upload Document: 5/min/IP
+  - Ask Question: 10/min/IP
+  - Read Document: 10/min/IP
+- **Environment Variables:** Secure keys in `.env`
+- **CSRF:** Disabled for API calls (for backend API usage)
+- **Use HTTPS in production!**
 
 ## 🧯 Troubleshooting
 
-| Issue                | Solution                                                      |
-| -------------------- | ------------------------------------------------------------- |
-| **Auth Errors**      | Ensure `Authorization` header has valid token                 |
-| **Timeout**          | Check logs, reduce `max_chunks` in `utils.py`                 |
-| **Bad Request**      | Ensure `file_name`, `file`, or `question` fields are provided |
-| **ChromaDB Errors**  | Ensure server is running at port 8000                         |
-| **Rate Limit (429)** | Wait 1 minute or adjust in `settings.py`                      |
-| **Swagger Issues**   | Ensure `drf-spectacular` is installed and running             |
-
----
+| Issue                 | Solution                                                                 |
+|-----------------------|--------------------------------------------------------------------------|
+| Auth Errors           | Ensure Authorization token is generated from admin panel                |
+| Timeout Issues        | Check logs, consider reducing `max_chunks` in `utils.py`                 |
+| 400 Bad Request       | Ensure payload and all request parameters are passed                     |
+| ChromaDB Connection   | Make sure `chroma run` server is active on port `8000`                   |
+| 429 Too Many Requests | Wait and retry after 1 minute                                            |
+| Swagger Not Loading   | Ensure `drf-spectacular` is installed and configured properly            |
+| TTS Not Working       | Ensure valid voice and supported browser used (e.g., Chrome, Edge)       |
+| Resume Broken         | Ensure database is connected; check read tracking logic on resume        |

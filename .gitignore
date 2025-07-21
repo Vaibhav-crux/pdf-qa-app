@@ -54,6 +54,10 @@ test-results.xml
 .DS_Store
 Thumbs.db
 
+# Files
+dir.py
+directory_structure.txt
+
 # Swagger/OpenAPI generated schema (if generated locally)
 schema.yml
 schema.json
